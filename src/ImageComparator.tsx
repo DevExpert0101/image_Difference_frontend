@@ -3,13 +3,12 @@ import React, { useState } from "react";
 const ImageComparator: React.FC = () => {
     const [image1, setImage1] = useState<string | null>(null);
     const [image2, setImage2] = useState<string | null>(null);
-    const [originalImage1, setOriginalImage1] = useState<string | null>(null);
-    const [originalImage2, setOriginalImage2] = useState<string | null>(null);
+    
     const [resultImages, setResultImages] = useState<string[]>([]);
     const [resultLabels, setResultLabels] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setImage: React.Dispatch<React.SetStateAction<string | null>>, containerWidth: number, containerHeight: number) => {
+    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setImage: React.Dispatch<React.SetStateAction<string | null>>, containerWidth: number = 800, containerHeight: number = 600) => {
         const file = event.target.files?.[0];
         if (file) {
             const reader = new FileReader();

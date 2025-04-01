@@ -67,7 +67,7 @@ const ImageComparator: React.FC = () => {
         formData.append("image2", blob2, "image2.png");
 
         try {
-            const response = await fetch("http://localhost:8000/compare", {
+            const response = await fetch("http://206.41.93.58:51505/compare", {
                 method: "POST",
                 body: formData,
             });

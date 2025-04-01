@@ -3,12 +3,12 @@ import React, { useState } from "react";
 const ImageComparator: React.FC = () => {
     const [image1, setImage1] = useState<string | null>(null);
     const [image2, setImage2] = useState<string | null>(null);
-    
+
     const [resultImages, setResultImages] = useState<string[]>([]);
     const [resultLabels, setResultLabels] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setImage: React.Dispatch<React.SetStateAction<string | null>>, containerWidth: number = 800, containerHeight: number = 600) => {
+    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setImage: React.Dispatch<React.SetStateAction<string | null>>, containerWidth?: number, containerHeight?: number) => {
         const file = event.target.files?.[0];
         if (file) {
             const reader = new FileReader();
@@ -25,11 +25,11 @@ const ImageComparator: React.FC = () => {
                     let newHeight = img.height;
                     const aspectRatio = img.width / img.height;
 
-                    if (newWidth > containerWidth) {
+                    if (containerWidth && newWidth > containerWidth) {
                         newWidth = containerWidth;
                         newHeight = newWidth / aspectRatio;
                     }
-                    if (newHeight > containerHeight) {
+                    if (containerHeight && newHeight > containerHeight) {
                         newHeight = containerHeight;
                         newWidth = newHeight * aspectRatio;
                     }
@@ -67,7 +67,8 @@ const ImageComparator: React.FC = () => {
         formData.append("image2", blob2, "image2.png");
 
         try {
-            const response = await fetch("http://206.41.93.58:51505/compare", {
+            // const response = await fetch("http://80.15.7.37:41655/compare", {
+            const response = await fetch("http://localhost:8000/compare", {
                 method: "POST",
                 body: formData,
             });

@@ -1,53 +1,20 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 const ImageComparator: React.FC = () => {
-    const [image1, setImage1] = useState<string | null>(null);
-    const [image2, setImage2] = useState<string | null>(null);
+    const [image1, setImage1] = useState<File | null>(null);
+    const [image2, setImage2] = useState<File | null>(null);
 
     const [resultImages, setResultImages] = useState<string[]>([]);
     const [resultLabels, setResultLabels] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>, setImage: React.Dispatch<React.SetStateAction<string | null>>, containerWidth?: number, containerHeight?: number) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target?.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement("canvas");
-                    const ctx = canvas.getContext("2d");
-                    if (!ctx) return;
-
-                    // Maintain aspect ratio while fitting within container
-                    let newWidth = img.width;
-                    let newHeight = img.height;
-                    const aspectRatio = img.width / img.height;
-
-                    if (containerWidth && newWidth > containerWidth) {
-                        newWidth = containerWidth;
-                        newHeight = newWidth / aspectRatio;
-                    }
-                    if (containerHeight && newHeight > containerHeight) {
-                        newHeight = containerHeight;
-                        newWidth = newHeight * aspectRatio;
-                    }
-
-                    canvas.width = newWidth;
-                    canvas.height = newHeight;
-                    ctx.drawImage(img, 0, 0, newWidth, newHeight);
-
-                    setImage(canvas.toDataURL("image/png"));
-                };
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
     function refreshPage() {
         window.location.reload();
     }
+
+    useEffect(() => {
+        console.log(import.meta.env.VITE_API_URL)
+    }, [])
 
     const handleCompare = async () => {
         if (!image1 || !image2) {
@@ -59,16 +26,13 @@ const ImageComparator: React.FC = () => {
         setResultImages([]);
         setResultLabels([]);
 
-        const blob1 = await fetch(image1).then(res => res.blob());
-        const blob2 = await fetch(image2).then(res => res.blob());
-
         const formData = new FormData();
-        formData.append("image1", blob1, "image1.png");
-        formData.append("image2", blob2, "image2.png");
+        formData.append("image1", image1);
+        formData.append("image2", image2);
 
         try {
             // const response = await fetch("http://80.15.7.37:41655/compare", {
-            const response = await fetch("http://localhost:8000/compare", {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/compare`, {
                 method: "POST",
                 body: formData,
             });
@@ -78,7 +42,7 @@ const ImageComparator: React.FC = () => {
             }
 
             const result = await response.json();
-            setResultImages(result.images.map((img: string) => `data:image/png;base64,${img}`));
+            setResultImages(result.images.map((img: string) => `data:image/jpg;base64,${img}`));
             setResultLabels(result.labels);
             console.log("Comparison Result:", result);
         } catch (error) {
@@ -98,7 +62,10 @@ const ImageComparator: React.FC = () => {
                         {index === 0 ? (!image1 ? (
                             <>
                                 <label className="cursor-pointer">
-                                    <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, setImage)} />
+                                    <input type="file" className="hidden" onChange={(e) => {
+                                        if (e.target.files)
+                                            setImage1(e.target.files[0])
+                                    }} />
                                     <div className="flex flex-col items-center">
                                         <span className="text-3xl flex items-center border-2 border-amber-50 p-2 rounded-xl">📂 CHOOSE CLEAN IMAGE</span>
                                         <p className="text-sm text-gray-400">or drop image here</p>
@@ -106,11 +73,14 @@ const ImageComparator: React.FC = () => {
                                 </label>
                             </>
                         ) : (
-                            <img src={image1} alt="Uploaded 1" className="h-full w-full object-contain" />
+                            <img src={image1 ? URL.createObjectURL(image1) : ''} alt="Uploaded 1" className="h-full w-full object-contain" />
                         )) : (!image2 ? (
                             <>
                                 <label className="cursor-pointer">
-                                    <input type="file" className="hidden" onChange={(e) => handleImageUpload(e, setImage)} />
+                                    <input type="file" className="hidden" onChange={(e) => {
+                                        if (e.target.files)
+                                            setImage2(e.target.files[0])
+                                    }} />
                                     <div className="flex flex-col items-center">
                                         <span className="text-3xl flex items-center border-2 border-amber-50 p-2 rounded-xl">📂 CHOOSE MESSY IMAGE</span>
                                         <p className="text-sm text-gray-400">or drop image here</p>
@@ -118,7 +88,7 @@ const ImageComparator: React.FC = () => {
                                 </label>
                             </>
                         ) : (
-                            <img src={image2} alt="Uploaded 2" className="h-full w-full object-contain" />
+                            <img src={image2 ? URL.createObjectURL(image2) : ''} alt="Uploaded 2" className="h-full w-full object-contain" />
                         ))}
                     </div>
                 ))}

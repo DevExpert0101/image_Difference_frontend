@@ -64,7 +64,7 @@ const ImageComparator: React.FC = () => {
                                 <label className="cursor-pointer">
                                     <input type="file" className="hidden" onChange={(e) => {
                                         if (e.target.files)
-                                            setImage1(e.target.files[0])
+                                            setImage(e.target.files[0])
                                     }} />
                                     <div className="flex flex-col items-center">
                                         <span className="text-3xl flex items-center border-2 border-amber-50 p-2 rounded-xl">📂 CHOOSE CLEAN IMAGE</span>
@@ -79,7 +79,7 @@ const ImageComparator: React.FC = () => {
                                 <label className="cursor-pointer">
                                     <input type="file" className="hidden" onChange={(e) => {
                                         if (e.target.files)
-                                            setImage2(e.target.files[0])
+                                            setImage(e.target.files[0])
                                     }} />
                                     <div className="flex flex-col items-center">
                                         <span className="text-3xl flex items-center border-2 border-amber-50 p-2 rounded-xl">📂 CHOOSE MESSY IMAGE</span>

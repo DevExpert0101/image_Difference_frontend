@@ -4,13 +4,10 @@ const ImageComparator: React.FC = () => {
     const [image1, setImage1] = useState<File | null>(null);
     const [image2, setImage2] = useState<File | null>(null);
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-    const [zoomed, setZoomed] = useState(false);
-
-
 
     const [resultImages, setResultImages] = useState<string[]>([]);
     const [resultLabels, setResultLabels] = useState<string[]>([]);
-    const [resultBboxes, setResultBBoxes] = useState<[]>([]);
+    const [resultBboxes, setResultBBoxes] = useState<[number, number, number, number][]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
     const [overlayBox, setOverlayBox] = useState<{ left: number, top: number, width: number, height: number } | null>(null);

@@ -1,13 +1,28 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, act } from "react";
+
+
+type ImageSource = 't0' | 't1' | 'changed' | null;
 
 const ImageComparator: React.FC = () => {
     const [image1, setImage1] = useState<File | null>(null);
     const [image2, setImage2] = useState<File | null>(null);
-    const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+    const [t0SelectedIndex, setT0SelectedIndex] = useState<number | null>(null);
+    const [t1SelectedIndex, setT1SelectedIndex] = useState<number | null>(null);
+    const [changeSelectedIndex, setChangeSelectedIndex] = useState<number | null>(null);
 
-    const [resultImages, setResultImages] = useState<string[]>([]);
-    const [resultLabels, setResultLabels] = useState<string[]>([]);
-    const [resultBboxes, setResultBBoxes] = useState<[number, number, number, number][]>([]);
+    const [t0Images, setT0Images] = useState<string[]>([]);
+    const [t0Labels, setT0Labels] = useState<string[]>([]);
+    const [t0Bboxes, setT0Bboxes] = useState<string[]>([]);
+
+    const [t1Images, setT1Images] = useState<string[]>([]);
+    const [t1Labels, setT1Labels] = useState<string[]>([]);
+    const [t1Bboxes, setT1Bboxes] = useState<string[]>([]);
+    const [changedImages, setChangedImages] = useState<string[]>([]);
+    const [changedLabels, setChangedLabels] = useState<string[]>([]);
+    const [changedBboxes, setChangedBboxes] = useState<string[]>([]);
+
+
+    const [activeImageSource, setActiveImageSource] = useState<ImageSource>(null);
     const [loading, setLoading] = useState<boolean>(false);
 
     const [overlayBox, setOverlayBox] = useState<{ left: number, top: number, width: number, height: number } | null>(null);
@@ -19,20 +34,75 @@ const ImageComparator: React.FC = () => {
         window.location.reload();
     }
 
-    useEffect(() => {
-        console.log(import.meta.env.VITE_API_URL)
-    }, []);
+
+
+    // const getActiveBox = () => {
+    //     switch(activeImageSource){
+    //         case 't0':
+
+    //     }
+    //     if (t0SelectedIndex !== null && t0Bboxes[t0SelectedIndex]) {
+    //         // return parseBBox(t0Bboxes[t0SelectedIndex]);
+    //         return t0Bboxes[t0SelectedIndex];
+    //     }
+    //     if (t1SelectedIndex !== null && t1Bboxes[t1SelectedIndex]) {
+    //         // return parseBBox(t1Bboxes[t1SelectedIndex]);
+    //         return t1Bboxes[t1SelectedIndex];
+    //     }
+    //     if (changeSelectedIndex !== null && changedBboxes[changeSelectedIndex]) {
+    //         // return parseBBox(changedBboxes[changeSelectedIndex]);
+    //         return changedBboxes[changeSelectedIndex];
+    //     }
+    //     return null;
+    // };
+
+    const getActiveBox = () => {
+        switch (activeImageSource) {
+            case 't0':
+                return t0SelectedIndex !== null ? t0Bboxes[t0SelectedIndex] : null;
+            case 't1':
+                return t1SelectedIndex !== null ? t1Bboxes[t1SelectedIndex] : null;
+            case 'changed':
+                return changeSelectedIndex !== null ? changedBboxes[changeSelectedIndex] : null;
+            default:
+                return null;
+        }
+    };
+
+    const parseBBox = (bboxStr: string): [number, number, number, number] => {
+        return bboxStr.split(',').map(Number) as [number, number, number, number];
+    };
+
+    const activeBoxKey = useMemo(() => {
+        const box = getActiveBox();
+        console.log('box', box)
+        return box ? box : null;
+    }, [
+        t0SelectedIndex, t0Bboxes,
+        t1SelectedIndex, t1Bboxes,
+        changeSelectedIndex, changedBboxes,
+        activeImageSource
+    ]);
 
     useEffect(() => {
-        if (selectedIndex === null || !resultBboxes[selectedIndex]) {
+        const box = getActiveBox();
+        if (!box) {
             setOverlayBox(null);
             return;
         }
 
-        const [x1, y1, x2, y2] = resultBboxes[selectedIndex];
-        const imgEl = image2Ref.current;
+        const [x1, y1, x2, y2] = box;
+        // const imgEl = image2Ref.current;
+
+        // if (!imgEl || imgEl.naturalWidth === 0 || imgEl.naturalHeight === 0) return;
+        const imgEl =
+            activeImageSource === 't0' ? image1Ref.current :
+                activeImageSource === 't1' ? image2Ref.current :
+                    activeImageSource === 'changed' ? image2Ref.current :
+                        null;
 
         if (!imgEl || imgEl.naturalWidth === 0 || imgEl.naturalHeight === 0) return;
+
 
         const containerWidth = imgEl.clientWidth;
         const containerHeight = imgEl.clientHeight;
@@ -64,7 +134,7 @@ const ImageComparator: React.FC = () => {
             width: (x2 - x1) * scaleX,
             height: (y2 - y1) * scaleY,
         });
-    }, [selectedIndex, resultBboxes]);
+    }, [activeBoxKey]);
 
 
     const handleCompare = async () => {
@@ -74,10 +144,18 @@ const ImageComparator: React.FC = () => {
         }
 
         setLoading(true);
-        setResultImages([]);
-        setResultLabels([]);
-        setResultBBoxes([]);
-        setSelectedIndex(null);
+        setT0Images([]);
+        setT0Labels([]);
+        setT0Bboxes([]);
+        setT1Images([]);
+        setT1Labels([]);
+        setT1Bboxes([]);
+        setChangedImages([]);
+        setChangedLabels([]);
+        setChangedBboxes([]);
+        setT0SelectedIndex(null);
+        setT1SelectedIndex(null);
+        setChangeSelectedIndex(null);
         setOverlayBox(null);
 
         const formData = new FormData();
@@ -96,9 +174,17 @@ const ImageComparator: React.FC = () => {
             }
 
             const result = await response.json();
-            setResultImages(result.images.map((img: string) => `data:image/jpg;base64,${img}`));
-            setResultLabels(result.labels);
-            setResultBBoxes(result.bboxes);
+            setT0Images(result.t0_images.map((img: string) => `data:image/jpg;base64,${img}`));
+            setT0Labels(result.t0_labels);
+            setT0Bboxes(result.t0_bboxes);
+
+            setT1Images(result.t1_images.map((img: string) => `data:image/jpg;base64,${img}`));
+            setT1Labels(result.t1_labels);
+            setT1Bboxes(result.t1_bboxes);
+
+            setChangedImages(result.changed_images.map((img: string) => `data:image/jpg;base64,${img}`));
+            setChangedLabels(result.changed_labels);
+            setChangedBboxes(result.changed_bboxes);
             console.log("Comparison Result:", result);
         } catch (error) {
             console.error("Error comparing images:", error);
@@ -252,83 +338,65 @@ const ImageComparator: React.FC = () => {
             <h1 className="text-4xl font-bold">Compare Room Images</h1>
             <p className="text-gray-600 mt-6">Find the difference between room images</p>
             <div className="w-full flex justify-center items-center gap-x-4 mt-6">
-                {[setImage1, setImage2].map((setImage, index) => (
-                    <div key={index} className="w-1/2 h-[600px] flex flex-col items-center justify-center border-dashed border-2 border-gray-400 p-4 rounded-lg bg-gray-900 text-white relative">
-                        {!((index === 0 ? image1 : image2)) ? (
-                            <label className="cursor-pointer">
-                                <input type="file" className="hidden" onChange={(e) => {
-                                    if (e.target.files) setImage(e.target.files[0]);
-                                }} />
-                                <div className="flex flex-col items-center">
-                                    <span className="text-3xl flex items-center border-2 border-amber-50 p-2 rounded-xl">
-                                        📂 CHOOSE {index === 0 ? "CLEAN" : "MESSY"} IMAGE
-                                    </span>
-                                    <p className="text-sm text-gray-400">or drop image here</p>
-                                </div>
-                            </label>
-                        ) : (
-                            <div className="relative w-full h-full">
-                                <img
-                                    src={URL.createObjectURL(index === 0 ? image1! : image2!)}
-                                    alt={`Uploaded ${index + 1}`}
-                                    ref={index === 0 ? image1Ref : image2Ref}
-                                    className="h-full w-full object-contain"
-                                />
-                                {index === 1 && overlayBox && (
-                                    <div
-                                        // className="absolute border-4 border-red-500"
-                                        className="absolute transition-all duration-300 ease-in-out border-2 border-red-500 rounded-md shadow-[0_0_10px_rgba(255,0,0,0.7)] hover:scale-110 hover:z-50"
-                                        style={{
-                                            top: `${overlayBox.top}px`,
-                                            left: `${overlayBox.left}px`,
-                                            width: `${overlayBox.width}px`,
-                                            height: `${overlayBox.height}px`,
-                                            // pointerEvents: "none",
-                                            zIndex: 10,
-                                        }}
-                                    />
-                                )}
+                {[setImage1, setImage2].map((setImage, index) => {
+                    const currentImage = index === 0 ? image1 : image2;
+                    const currentRef = index === 0 ? image1Ref : image2Ref;
+                    // const sourceTag = index === 0 ? 't0' : 't1'; // or use other tag names if needed
+                    const sourceTag = index === 0 ? 't0' : 't1_or_changed';
+                    const shouldShowOverlay = (
+                        (index === 0 && activeImageSource === 't0') ||
+                        (index === 1 && (activeImageSource === 't1' || activeImageSource === 'changed'))
+                    );
 
-                                {/* {index === 1 && overlayBox && selectedIndex !== null && image2 && (
-                                    <div
-                                        className="absolute overflow-hidden border-2 border-red-500 rounded-md shadow-[0_0_10px_rgba(255,0,0,0.7)]"
-                                        style={{
-                                            top: `${overlayBox.top}px`,
-                                            left: `${overlayBox.left}px`,
-                                            width: `${overlayBox.width}px`,
-                                            height: `${overlayBox.height}px`,
-                                            zIndex: 10,
-                                        }}
-                                        onMouseEnter={() => setZoomed(true)}
-                                        onMouseLeave={() => setZoomed(false)}
-                                    >
+                    return (
+
+                        <div key={index} className="w-1/2 h-[600px] flex flex-col items-center justify-center border-dashed border-2 border-gray-400 p-4 rounded-lg bg-gray-900 text-white relative">
+                            {/* {!((index === 0 ? image1 : image2)) ? ( */}
+                            {!currentImage ? (
+                                <label className="cursor-pointer">
+                                    <input type="file" className="hidden" onChange={(e) => {
+                                        if (e.target.files) setImage(e.target.files[0]);
+                                    }} />
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-3xl flex items-center border-2 border-amber-50 p-2 rounded-xl">
+                                            📂 CHOOSE {index === 0 ? "CLEAN" : "MESSY"} IMAGE
+                                        </span>
+                                        <p className="text-sm text-gray-400">or drop image here</p>
+                                    </div>
+                                </label>
+                            ) : (
+                                <div className="relative w-full h-full">
+                                    <img
+                                        src={URL.createObjectURL(index === 0 ? image1! : image2!)}
+                                        alt={`Uploaded ${index + 1}`}
+                                        ref={currentRef}
+                                        className="h-full w-full object-contain"
+                                    />
+                                    {/* {index === 1 && overlayBox && ( */}
+                                    {shouldShowOverlay && overlayBox && (
                                         <div
-                                            className="w-full h-full transition-transform duration-300 ease-in-out"
+                                            // className="absolute border-4 border-red-500"
+                                            className="absolute transition-all duration-300 ease-in-out border-2 border-red-500 rounded-md shadow-[0_0_10px_rgba(255,0,0,0.7)] hover:scale-110 hover:z-50"
                                             style={{
-                                                backgroundImage: `url(${URL.createObjectURL(image2)})`,
-                                                backgroundSize: `${image2Ref.current?.clientWidth}px ${image2Ref.current?.clientHeight}px`,
-                                                backgroundPosition: `-${overlayBox.left}px -${overlayBox.top}px`,
-                                                backgroundRepeat: 'no-repeat',
-                                                transform: zoomed ? 'scale(1.1)' : 'scale(1)',
-                                                transformOrigin: 'center center',
+                                                top: `${overlayBox.top}px`,
+                                                left: `${overlayBox.left}px`,
+                                                width: `${overlayBox.width}px`,
+                                                height: `${overlayBox.height}px`,
+                                                // pointerEvents: "none",
+                                                zIndex: 10,
                                             }}
                                         />
-                                        <div className="absolute top-0 left-0 bg-red-600 text-white text-xs px-2 py-1 rounded-br-md shadow z-10">
-                                            {resultLabels[selectedIndex]}
-                                        </div>
-                                    </div>
-                                )} */}
-
-
-
-
-                            </div>
-                        )}
-                    </div>
-                ))}
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )
+                })
+                }
             </div>
 
-            <div className="flex flex-col">
+            <div className="flex flex-col w-full">
+                {/* <div className="w-full overflow-x-auto scroll-smooth"> */}
                 <div className="flex justify-center gap-4">
                     <button
                         className="mt-6 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
@@ -350,21 +418,63 @@ const ImageComparator: React.FC = () => {
                         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-600 border-solid"></div>
                     </div>
                 )}
+                <div className="overflow-x-auto scroll-smooth">
 
-                {resultImages.length > 0 && (
-                    <div className="mt-6 flex justify-center gap-4 flex-wrap">
-                        {resultImages.map((img, index) => (
-                            <div key={index} className="flex flex-col items-center">
-                                <img
-                                    src={img}
-                                    alt={resultLabels[index]}
-                                    className="w-[300px] h-[200px] object-contain border border-gray-400 rounded-lg cursor-pointer"
-                                    onClick={() => setSelectedIndex(index)}
-                                />
+                    {t0Images.length > 0 && (
+                        <div className="w-full overflow-x-auto">
+                            <h2 className="text-xl font-semibold text-black mb-2">🟥 Removed Objects (T0)</h2>
+                            <div className="mt-6 flex justify-center gap-4 flex-nowrap">
+                                {t0Images.map((img, index) => (
+                                    <div key={index} className="flex flex-col items-center">
+                                        <img
+                                            src={img}
+                                            alt={t0Images[index]}
+                                            className="w-[300px] h-[200px] object-contain border border-gray-400 rounded-lg cursor-pointer"
+                                            // className="h-40 w-auto cursor-pointer border-2 border-transparent hover:border-amber-400 rounded"
+                                            onClick={() => { setT0SelectedIndex(index); setActiveImageSource('t0'); }}
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                )}
+                        </div>
+                    )}
+                    <hr />
+                    {t1Images.length > 0 && (
+                        <div className="w-full overflow-x-auto mt-4">
+                            <h2 className="text-xl font-semibold text-black mb-2">🟩 Newly Appeared Objects (T1)</h2>
+                            <div className="mt-6 flex justify-center gap-4 flex-nowrap">
+                                {t1Images.map((img, index) => (
+                                    <div key={index} className="flex flex-col items-center">
+                                        <img
+                                            src={img}
+                                            alt={t1Images[index]}
+                                            className="w-[300px] h-[200px] object-contain border border-gray-400 rounded-lg cursor-pointer"
+                                            onClick={() => { setT1SelectedIndex(index); setActiveImageSource('t1'); }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <hr />
+                    {changedImages.length > 0 && (
+                        <div className="w-full overflow-x-auto mt-4">
+                            <h2 className="text-xl font-semibold text-black mb-2">🟦 Detected Changes</h2>
+                            <div className="mt-6 flex justify-center gap-4 flex-nowrap">
+                                {changedImages.map((img, index) => (
+                                    <div key={index} className="flex flex-col items-center">
+                                        <img
+                                            src={img}
+                                            alt={changedImages[index]}
+                                            className="w-[300px] h-[200px] object-contain border border-gray-400 rounded-lg cursor-pointer"
+                                            onClick={() => { setChangeSelectedIndex(index); setActiveImageSource('changed'); }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

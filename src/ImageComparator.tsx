@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo, act } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 
 
 type ImageSource = 't0' | 't1' | 'changed' | null;
@@ -11,14 +11,11 @@ const ImageComparator: React.FC = () => {
     const [changeSelectedIndex, setChangeSelectedIndex] = useState<number | null>(null);
 
     const [t0Images, setT0Images] = useState<string[]>([]);
-    const [t0Labels, setT0Labels] = useState<string[]>([]);
     const [t0Bboxes, setT0Bboxes] = useState<string[]>([]);
 
     const [t1Images, setT1Images] = useState<string[]>([]);
-    const [t1Labels, setT1Labels] = useState<string[]>([]);
     const [t1Bboxes, setT1Bboxes] = useState<string[]>([]);
     const [changedImages, setChangedImages] = useState<string[]>([]);
-    const [changedLabels, setChangedLabels] = useState<string[]>([]);
     const [changedBboxes, setChangedBboxes] = useState<string[]>([]);
 
 
@@ -69,9 +66,7 @@ const ImageComparator: React.FC = () => {
         }
     };
 
-    const parseBBox = (bboxStr: string): [number, number, number, number] => {
-        return bboxStr.split(',').map(Number) as [number, number, number, number];
-    };
+    
 
     const activeBoxKey = useMemo(() => {
         const box = getActiveBox();
@@ -129,10 +124,10 @@ const ImageComparator: React.FC = () => {
         const scaleY = renderedHeight / imgEl.naturalHeight;
 
         setOverlayBox({
-            left: offsetX + x1 * scaleX,
-            top: offsetY + y1 * scaleY,
-            width: (x2 - x1) * scaleX,
-            height: (y2 - y1) * scaleY,
+            left: offsetX + Number(x1) * scaleX,
+            top: offsetY + Number(y1) * scaleY,
+            width: (Number(x2) - Number(x1)) * scaleX,
+            height: (Number(y2) - Number(y1)) * scaleY,
         });
     }, [activeBoxKey]);
 
@@ -145,13 +140,10 @@ const ImageComparator: React.FC = () => {
 
         setLoading(true);
         setT0Images([]);
-        setT0Labels([]);
         setT0Bboxes([]);
         setT1Images([]);
-        setT1Labels([]);
         setT1Bboxes([]);
         setChangedImages([]);
-        setChangedLabels([]);
         setChangedBboxes([]);
         setT0SelectedIndex(null);
         setT1SelectedIndex(null);
@@ -175,15 +167,12 @@ const ImageComparator: React.FC = () => {
 
             const result = await response.json();
             setT0Images(result.t0_images.map((img: string) => `data:image/jpg;base64,${img}`));
-            setT0Labels(result.t0_labels);
             setT0Bboxes(result.t0_bboxes);
 
             setT1Images(result.t1_images.map((img: string) => `data:image/jpg;base64,${img}`));
-            setT1Labels(result.t1_labels);
             setT1Bboxes(result.t1_bboxes);
 
             setChangedImages(result.changed_images.map((img: string) => `data:image/jpg;base64,${img}`));
-            setChangedLabels(result.changed_labels);
             setChangedBboxes(result.changed_bboxes);
             console.log("Comparison Result:", result);
         } catch (error) {
@@ -342,7 +331,6 @@ const ImageComparator: React.FC = () => {
                     const currentImage = index === 0 ? image1 : image2;
                     const currentRef = index === 0 ? image1Ref : image2Ref;
                     // const sourceTag = index === 0 ? 't0' : 't1'; // or use other tag names if needed
-                    const sourceTag = index === 0 ? 't0' : 't1_or_changed';
                     const shouldShowOverlay = (
                         (index === 0 && activeImageSource === 't0') ||
                         (index === 1 && (activeImageSource === 't1' || activeImageSource === 'changed'))
